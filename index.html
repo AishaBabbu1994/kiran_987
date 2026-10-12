@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizForge AI 🪔 · Generador de Quiz con IA</title>
+
+<!-- ============================================================
+     LIBRERÍAS EXTERNAS (100% cliente, sin backend)
+     - PDF.js  -> extraer texto de archivos PDF
+     - Mammoth -> extraer texto de archivos DOCX
+     ============================================================ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+<!-- Tipografías -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Karma:wght@400;500;600;700&family=Rozha+One&family=Tiro+Devanagari+Hindi&family=Yatra+One&display=swap" rel="stylesheet">
+
+<style>
+/* ================================================================
+   TOKENS DE DISEÑO
+   ================================================================ */
+:root{
+  --bg:#F6E7C6;
+  --bg-deep:#EBD3A0;
+  --surface:#FFF9EA;
+  --surface-alt:#F6E9C9;
+  --border:#E0BF83;
+  --text:#3A1D0B;
+  --text-muted:#8A6537;
+  --primary:#E0821C;
+  --primary-dark:#B95F0A;
+  --primary-light:#FCEBCB;
+  --accent:#0F7B5F;
+  --accent-light:#E2F4EC;
+  --danger:#C0392B;
+  --danger-light:#FBE4DE;
+  --warning:#E8A317;
+  --gold:#D9A520;
+  --gold-light:#F7D97B;
+  --maroon:#6E1423;
+  --maroon-deep:#4A0D18;
+  --radius:18px;
+  --radius-sm:12px;
+  --shadow:0 6px 22px rgba(110,20,35,.14);
+  --shadow-lg:0 16px 44px rgba(110,20,35,.24);
+  --font-display:'Rozha One',serif;
+  --font-body:'Karma',serif;
+  --font-deva:'Tiro Devanagari Hindi',serif;
+  --font-fun:'Yatra One',cursive;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(255,204,102,.55), transparent 60%),
+    radial-gradient(900px 480px at 92% 2%, rgba(224,130,28,.28), transparent 62%),
+    radial-gradient(1000px 620px at 50% 108%, rgba(110,20,35,.2), transparent 65%),
+    linear-gradient(180deg,#F9EDCF 0%,#F3DFB2 45%,#EFD6A0 100%);
+  background-attachment:fixed;
+  color:var(--text);
+  font-family:var(--font-body);
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+/* Mandala giratorio sutil */
+body::before{
+  content:"";position:fixed;pointer-events:none;
+  width:140vmax;height:140vmax;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  background:
+    repeating-conic-gradient(from 0deg, rgba(217,165,32,.1) 0deg 2deg, transparent 2deg 16deg),
+    repeating-radial-gradient(circle, rgba(110,20,35,.06) 0 2px, transparent 2px 74px);
+  -webkit-mask:radial-gradient(circle, transparent 26%, #000 62%, transparent 92%);
+  mask:radial-gradient(circle, transparent 26%, #000 62%, transparent 92%);
+  animation:mandalaSpin 180s linear infinite;
+  z-index:0;
+}
+@keyframes mandalaSpin{to{transform:translate(-50%,-50%) rotate(360deg);}}
+h1,h2,h3,h4,button,.btn{font-family:var(--font-display);}
+button{font-family:inherit;cursor:pointer;}
+a{color:var(--primary-dark);}
+::selection{background:rgba(224,130,28,.35);}
+
+/* Foco visible accesible */
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,label:focus-within{
+  outline:2px solid var(--primary);
+  outline-offset:2px;
+}
+
+/* ================================================================
+   FONDO DECORATIVO — devanagari flotante, lámparas de luz
+   ================================================================ */
+.deco-layer{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+.deco-glyph{
+  position:absolute;font-family:var(--font-deva);
+  color:rgba(185,105,15,.17);
+  text-shadow:0 0 24px rgba(255,196,84,.55),0 0 64px rgba(224,130,28,.3);
+  user-select:none;will-change:transform;
+  animation:floatGlyph 15s ease-in-out infinite alternate;
+}
+.deco-emoji{
+  position:absolute;font-size:30px;opacity:.32;user-select:none;
+  filter:drop-shadow(0 0 12px rgba(255,200,90,.85));
+  animation:floatGlyph 18s ease-in-out infinite alternate;
+}
+@keyframes floatGlyph{
+  0%{transform:translate3d(0,0,0) rotate(-7deg) scale(1);}
+  100%{transform:translate3d(20px,-52px,0) rotate(8deg) scale(1.12);}
+}
+.deco-glyph.d1,.deco-emoji.d1{animation-duration:14s;}
+.deco-glyph.d2,.deco-emoji.d2{animation-duration:20s;animation-delay:-5s;}
+.deco-glyph.d3,.deco-emoji.d3{animation-duration:26s;animation-delay:-11s;}
+.g1{top:9%;left:5%;font-size:110px;color:rgba(192,57,43,.2);}
+.g2{top:15%;right:6%;font-size:92px;}
+.g3{top:44%;left:2.5%;font-size:84px;color:rgba(15,123,95,.18);}
+.g4{bottom:13%;right:4%;font-size:100px;color:rgba(192,57,43,.17);}
+.g5{top:63%;left:11%;font-size:64px;}
+.g6{top:28%;left:46%;font-size:56px;color:rgba(15,123,95,.14);}
+.g7{top:75%;right:19%;font-size:76px;}
+.g8{top:55%;right:11%;font-size:60px;color:rgba(192,57,43,.15);}
+.g9{bottom:32%;left:6%;font-size:96px;color:rgba(15,123,95,.15);}
+.g10{top:5%;left:37%;font-size:62px;}
+.g11{bottom:5%;left:25%;font-size:54px;color:rgba(192,57,43,.16);}
+.g12{top:86%;right:38%;font-size:48px;color:rgba(15,123,95,.14);}
+.e1{top:22%;left:16%;}
+.e2{top:70%;left:30%;}
+.e3{top:12%;right:24%;}
+.e4{bottom:24%;right:8%;}
+.e5{top:40%;right:30%;}
+.e6{bottom:8%;left:44%;}
+.lamp{
+  position:absolute;width:360px;height:360px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,196,84,.5),rgba(255,150,40,.18) 42%,transparent 70%);
+  filter:blur(8px);animation:lampPulse 5.5s ease-in-out infinite;
+}
+.lamp-a{top:-130px;left:-120px;}
+.lamp-b{top:-150px;right:-130px;animation-delay:1.8s;}
+.lamp-c{bottom:-180px;left:calc(50% - 180px);animation-delay:3.2s;}
+@keyframes lampPulse{0%,100%{opacity:.5;transform:scale(1);}50%{opacity:.95;transform:scale(1.1);}}
+
+/* ================================================================
+   TOPBAR — puerta de templo
+   ================================================================ */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 28px;
+  background:linear-gradient(180deg,rgba(74,13,24,.97),rgba(110,20,35,.94));
+  backdrop-filter:blur(10px);
+  border-bottom:2px solid rgba(247,217,123,.6);
+  box-shadow:0 8px 30px rgba(74,13,24,.35);
+}
+.topbar::after{
+  content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;
+  background:linear-gradient(90deg,transparent,#F7D97B,#FFB25E,#F7D97B,transparent);
+  background-size:220% 100%;
+  animation:sheen 6s linear infinite;
+}
+@keyframes sheen{to{background-position:220% 0;}}
+.brand{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:400;font-size:22px;color:#FDEBC8;text-shadow:0 2px 12px rgba(0,0,0,.35);}
+.brand-mark{
+  width:40px;height:40px;border-radius:50%;
+  background:radial-gradient(circle at 32% 28%,#FFE9A8,#E9A93B 48%,#B95F0A 100%);
+  display:flex;align-items:center;justify-content:center;color:#4A0D18;font-size:20px;
+  border:2px solid rgba(255,232,170,.85);
+  box-shadow:0 0 18px rgba(255,196,84,.7),0 4px 14px rgba(0,0,0,.3);
+  animation:omGlow 3.2s ease-in-out infinite;
+}
+@keyframes omGlow{
+  0%,100%{box-shadow:0 0 14px rgba(255,196,84,.5),0 4px 14px rgba(0,0,0,.3);}
+  50%{box-shadow:0 0 30px rgba(255,214,120,.95),0 4px 14px rgba(0,0,0,.3);}
+}
+.brand-deva{font-family:var(--font-fun);font-size:13px;font-weight:400;color:rgba(253,235,200,.72);margin-left:2px;}
+.topbar-actions{display:flex;gap:10px;align-items:center;}
+.icon-btn{
+  width:40px;height:40px;border-radius:12px;
+  border:1.5px solid rgba(247,217,123,.5);
+  background:rgba(255,244,214,.12);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;color:#FDEBC8;transition:.2s;
+}
+.icon-btn:hover{background:rgba(247,217,123,.22);border-color:#F7D97B;color:#FFE9A8;transform:rotate(-8deg) scale(1.08);}
+.key-status{
+  font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;
+  background:rgba(255,244,214,.14);color:#F3D9A0;white-space:nowrap;
+  border:1px solid rgba(247,217,123,.35);letter-spacing:.03em;
+}
+.key-status.ok{background:rgba(15,123,95,.9);color:#EAFFF8;border-color:#4ED0A8;box-shadow:0 0 14px rgba(78,208,168,.55);}
+.key-status.bad{background:rgba(192,57,43,.88);color:#FFEDE8;border-color:#FF9C8A;box-shadow:0 0 14px rgba(255,120,90,.5);}
+
+/* ================================================================
+   LAYOUT GENERAL — pergamino sobre mandala
+   ================================================================ */
+main{max-width:1100px;margin:0 auto;padding:36px 20px 90px;position:relative;z-index:2;}
+.view{display:none;}
+.view.active{display:block;animation:fadeIn .4s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px) scale(.99);}to{opacity:1;transform:translateY(0) scale(1);}}
+
+.hero{text-align:center;margin-bottom:30px;}
+.hero h1{
+  font-size:clamp(26px,4.6vw,40px);margin:0 0 10px;line-height:1.18;font-weight:400;
+  background:linear-gradient(95deg,#8A4B08 0%,#E0821C 30%,#C0392B 62%,#8A4B08 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:titleGlow 5s ease-in-out infinite;
+}
+@keyframes titleGlow{
+  0%,100%{filter:drop-shadow(0 3px 12px rgba(224,130,28,.3));}
+  50%{filter:drop-shadow(0 6px 26px rgba(224,130,28,.6));}
+}
+.hero-deva{
+  font-family:var(--font-deva);color:#9A5B1B;font-size:16px;margin:0 0 10px;
+  letter-spacing:.14em;text-shadow:0 0 20px rgba(255,190,80,.65);
+  animation:floaty 5s ease-in-out infinite;
+}
+@keyframes floaty{0%,100%{transform:translateY(0) rotate(-1.5deg);}50%{transform:translateY(-7px) rotate(1.5deg);}}
+.hero p{color:var(--text-muted);margin:0;font-size:15.5px;}
+
+.card{
+  position:relative;
+  background:linear-gradient(180deg,#FFFCF3,#FBF0D5 55%,#F8E9C4) padding-box,
+             linear-gradient(135deg,#F0CE7E,#DC8A24 40%,#C0392B 75%,#F0CE7E) border-box;
+  border:2px solid transparent;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.65),inset 0 0 52px rgba(233,196,106,.25);
+  padding:24px;
+}
+.card::before{
+  content:"❁ ✦ ❁";position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+  font-size:12px;letter-spacing:.5em;color:#B87417;
+  background:linear-gradient(180deg,#FFFCF3,#FBF0D5);padding:2px 14px 3px;border-radius:999px;
+  box-shadow:0 2px 8px rgba(185,95,10,.25);
+  pointer-events:none;
+}
+
+/* ================================================================
+   VISTA: CONFIGURACIÓN / ENTRADA
+   ================================================================ */
+.setup-grid{
+  display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:start;
+}
+@media(max-width:860px){.setup-grid{grid-template-columns:1fr;}}
+
+.tabs{
+  display:flex;gap:6px;margin-bottom:16px;width:fit-content;
+  background:rgba(217,165,32,.16);padding:5px;border-radius:12px;
+  border:1px solid rgba(217,165,32,.35);
+}
+.tab-btn{
+  border:none;background:transparent;padding:9px 18px;border-radius:9px;
+  font-family:var(--font-display);font-size:14px;color:var(--text-muted);transition:.2s;
+}
+.tab-btn:hover{color:var(--primary-dark);}
+.tab-btn.active{
+  background:linear-gradient(180deg,#FFF8E2,#FBE9BF);color:var(--primary-dark);
+  box-shadow:0 3px 12px rgba(185,95,10,.28),inset 0 0 0 1px rgba(217,165,32,.55);
+}
+
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn .3s ease;}
+
+textarea#textInput{
+  width:100%;min-height:220px;resize:vertical;
+  border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px;font-family:var(--font-body);font-size:15px;color:var(--text);
+  background:linear-gradient(180deg,#FFFDF6,#FCF3DC);
+  box-shadow:inset 0 2px 12px rgba(185,120,30,.14);
+  transition:.2s;
+}
+textarea#textInput:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 4px rgba(224,130,28,.2),inset 0 2px 12px rgba(185,120,30,.14);}
+.char-count{font-size:12px;color:var(--text-muted);text-align:right;margin-top:6px;}
+
+.dropzone{
+  border:2px dashed #D9A520;border-radius:var(--radius);
+  padding:38px 16px;text-align:center;cursor:pointer;transition:.25s;
+  background:radial-gradient(460px 220px at 50% 0%,rgba(255,214,120,.4),rgba(253,246,228,.92));
+}
+.dropzone:hover,.dropzone.dragover{
+  border-color:var(--primary);
+  background:radial-gradient(460px 220px at 50% 0%,rgba(255,206,96,.6),rgba(253,240,214,.95));
+  box-shadow:0 0 0 6px rgba(224,130,28,.14),0 12px 30px rgba(185,95,10,.22);
+  transform:translateY(-2px);
+}
+.dropzone .dz-icon{font-size:38px;margin-bottom:8px;display:inline-block;animation:floaty 3.4s ease-in-out infinite;}
+.dropzone p{margin:4px 0;color:var(--text-muted);font-size:13.5px;}
+.dropzone strong{color:var(--primary-dark);}
+.file-info{
+  margin-top:12px;display:none;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,#FDF3D8,#F8E8BF);border:1px solid rgba(217,165,32,.5);
+  border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;
+}
+.file-info.show{display:flex;animation:fadeIn .3s ease;}
+.file-info .remove-file{border:none;background:none;color:var(--danger);font-weight:700;font-size:14px;transition:.2s;}
+.file-info .remove-file:hover{transform:scale(1.25) rotate(8deg);}
+
+/* Panel de configuración */
+.config-card h3{margin:0 0 18px;font-size:18px;color:var(--maroon);}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;font-weight:700;color:#A06A22;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;}
+.field select,.field input[type="number"]{
+  width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  font-size:14px;background:linear-gradient(180deg,#FFFDF6,#FCF3DC);color:var(--text);font-family:inherit;
+  transition:.2s;
+}
+.field select:focus,.field input[type="number"]:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 4px rgba(224,130,28,.18);}
+.checkbox-group{display:flex;flex-direction:column;gap:8px;}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;}
+.checkbox-row input{accent-color:var(--primary-dark);width:16px;height:16px;}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:none;border-radius:12px;padding:13px 22px;font-weight:400;font-size:15px;
+  transition:.2s;
+}
+.btn-primary{
+  background:linear-gradient(135deg,#F2A33F,#DE7E12 55%,#B95F0A);
+  color:#FFF8E8;width:100%;position:relative;overflow:hidden;
+  box-shadow:0 10px 26px rgba(222,126,18,.45),inset 0 1px 0 rgba(255,255,255,.45);
+  text-shadow:0 1px 3px rgba(110,45,0,.4);
+}
+.btn-primary::after{
+  content:"";position:absolute;top:-40%;left:-70%;width:45%;height:180%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);
+  transform:rotate(18deg);animation:shineSweep 3.4s ease-in-out infinite;
+}
+@keyframes shineSweep{0%{left:-70%;}55%{left:140%;}100%{left:140%;}}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(222,126,18,.6),inset 0 1px 0 rgba(255,255,255,.45);}
+.btn-primary:disabled{opacity:.55;cursor:not-allowed;transform:none;}
+.btn-primary:disabled::after{display:none;}
+.btn-secondary{
+  background:linear-gradient(180deg,#FFF8E4,#F6E4BB);color:var(--maroon);
+  border:1.5px solid rgba(217,165,32,.55);
+}
+.btn-secondary:hover{border-color:var(--primary);color:var(--primary-dark);transform:translateY(-1px);box-shadow:0 6px 16px rgba(185,95,10,.2);}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1.5px solid rgba(217,165,32,.45);}
+.btn-ghost:hover{color:var(--primary-dark);border-color:var(--primary);background:rgba(253,243,216,.7);}
+
+/* ================================================================
+   VISTA: CARGANDO — mandala girando
+   ================================================================ */
+.loading-view{text-align:center;padding:70px 20px;}
+.loader-wrap{position:relative;width:112px;height:112px;margin:0 auto 26px;}
+.loader-wrap::before{
+  content:"";position:absolute;inset:-26px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,196,84,.55),transparent 70%);
+  animation:lampPulse 2.6s ease-in-out infinite;
+}
+.loader-orb{
+  width:112px;height:112px;border-radius:50%;
+  background:conic-gradient(from 0deg,#F7D97B,#E0821C,#C0392B,#0F7B5F,#F7D97B);
+  animation:spin 1.6s linear infinite;
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 0);
+  mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 0);
+  filter:drop-shadow(0 0 16px rgba(255,180,60,.85));
+}
+.loader-om{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:42px;animation:floaty 2.6s ease-in-out infinite;
+  filter:drop-shadow(0 0 12px rgba(255,200,90,.95));
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-view h3{margin:0 0 6px;font-size:24px;color:var(--maroon);}
+.loading-view .loading-deva{font-family:var(--font-deva);color:#9A5B1B;letter-spacing:.1em;margin:0 0 8px;text-shadow:0 0 16px rgba(255,190,80,.6);}
+.loading-view p{color:var(--text-muted);}
+
+/* ================================================================
+   VISTA: QUIZ
+   ================================================================ */
+.quiz-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:14px;flex-wrap:wrap;}
+.progress-wrap{flex:1;min-width:180px;}
+.progress-track{
+  height:10px;border-radius:999px;overflow:hidden;border:1px solid rgba(217,165,32,.45);
+  background:linear-gradient(180deg,#EFDDB5,#E3C98F);
+  box-shadow:inset 0 2px 5px rgba(120,70,10,.25);
+}
+.progress-fill{
+  height:100%;
+  background:linear-gradient(90deg,#E0821C,#F7C948,#E0821C);background-size:200% 100%;
+  animation:stripes 2.4s linear infinite;
+  box-shadow:0 0 14px rgba(247,201,72,.85);
+  transition:width .35s ease;
+}
+@keyframes stripes{to{background-position:200% 0;}}
+.progress-label{font-size:12px;color:var(--text-muted);margin-top:6px;}
+
+.nav-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px;}
+.nav-dot{
+  width:34px;height:34px;border-radius:10px;border:1.5px solid rgba(217,165,32,.5);
+  background:linear-gradient(180deg,#FFF9E8,#F7E8C4);
+  font-size:12px;font-weight:700;color:var(--text-muted);transition:.2s;
+}
+.nav-dot:hover{transform:translateY(-2px);border-color:var(--primary);}
+.nav-dot.current{border-color:var(--primary);color:var(--primary-dark);box-shadow:0 0 0 3px rgba(224,130,28,.22),0 4px 12px rgba(185,95,10,.25);}
+.nav-dot.answered{background:linear-gradient(180deg,#FCE4B4,#F3CF86);color:#8A4B08;border-color:#DD9B2C;}
+
+.question-card{position:relative;padding-top:30px;}
+.question-card::before{
+  content:"";position:absolute;top:0;left:22px;right:22px;height:5px;border-radius:0 0 6px 6px;
+  background:linear-gradient(90deg,#E0821C,#F7C948,#C0392B,#0F7B5F,#E0821C);
+  background-size:220% 100%;animation:sheen 5s linear infinite;
+  box-shadow:0 2px 12px rgba(224,130,28,.5);
+}
+.q-type-badge{
+  display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:#8A4B08;background:linear-gradient(180deg,#FDEECB,#F8DFA4);
+  border:1px solid rgba(217,165,32,.55);
+  padding:4px 12px;border-radius:999px;margin-bottom:14px;
+  box-shadow:0 2px 8px rgba(185,95,10,.18);
+}
+.q-text{font-size:20px;font-weight:600;margin:0 0 20px;line-height:1.45;}
+
+.options{display:flex;flex-direction:column;gap:10px;}
+.option{
+  display:flex;align-items:center;gap:12px;
+  border:1.5px solid rgba(217,165,32,.5);border-radius:var(--radius-sm);
+  padding:13px 16px;font-size:14.5px;background:linear-gradient(180deg,#FFFCF3,#FBF1DA);
+  text-align:left;width:100%;transition:.18s;position:relative;
+}
+.option:hover{
+  border-color:var(--primary);background:linear-gradient(180deg,#FFF6DF,#FBE7B9);
+  transform:translateX(4px);box-shadow:0 6px 18px rgba(185,95,10,.2);
+}
+.option .opt-letter{
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(180deg,#F6E3B4,#EDD08D);color:#8A4B08;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;
+  border:1px solid rgba(217,165,32,.5);
+}
+.option.selected{border-color:var(--primary);background:linear-gradient(180deg,#FDEDCB,#F7DCA4);box-shadow:0 0 0 4px rgba(224,130,28,.16);}
+.option.selected .opt-letter{background:linear-gradient(180deg,#F2A33F,#C96A0E);color:#FFF8E8;border-color:#B95F0A;}
+.option.selected::after{content:"🪔";position:absolute;right:14px;font-size:16px;animation:floaty 2s ease-in-out infinite;}
+
+.option.correct{border-color:var(--accent);background:linear-gradient(180deg,#E9F9F0,#D7F1E4);}
+.option.correct .opt-letter{background:linear-gradient(180deg,#1E9C79,#0F7B5F);color:#fff;border-color:#0F7B5F;}
+.option.incorrect{border-color:var(--danger);background:linear-gradient(180deg,#FDECE7,#F9DCD4);}
+.option.incorrect .opt-letter{background:linear-gradient(180deg,#D0503F,#A62E21);color:#fff;border-color:#A62E21;}
+
+.fill-blank-input{
+  width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  font-size:15px;background:linear-gradient(180deg,#FFFDF6,#FCF3DC);font-family:inherit;transition:.2s;
+}
+.fill-blank-input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 4px rgba(224,130,28,.18);}
+
+.explanation{
+  margin-top:16px;padding:14px 16px;border-radius:var(--radius-sm);
+  background:linear-gradient(180deg,#FBF0D3,#F7E7BF);
+  border-left:4px solid var(--gold);
+  font-size:13.5px;color:var(--text);display:none;
+  box-shadow:inset 0 0 22px rgba(233,196,106,.35);
+}
+.explanation.show{display:block;animation:fadeIn .3s ease;}
+.explanation strong{color:var(--primary-dark);}
+
+.quiz-actions{display:flex;justify-content:space-between;margin-top:22px;gap:10px;flex-wrap:wrap;}
+.quiz-actions .side{display:flex;gap:10px;}
+
+/* ================================================================
+   VISTA: RESULTADOS
+   ================================================================ */
+.results-summary{
+  display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin-bottom:26px;
+}
+.score-ring{position:relative;width:120px;height:120px;flex-shrink:0;filter:drop-shadow(0 0 14px rgba(224,130,28,.45));}
+.score-ring svg{transform:rotate(-90deg);}
+.score-ring .bg{stroke:#F0DFB6;}
+.score-ring .fg{stroke:#E0821C;stroke-linecap:round;transition:stroke-dashoffset .8s ease;}
+.score-ring .score-text{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.score-ring .score-text b{font-size:26px;color:var(--maroon);}
+.score-ring .score-text span{font-size:11px;color:var(--text-muted);}
+.results-meta h2{margin:0 0 6px;font-size:26px;color:var(--maroon);}
+.results-meta p{margin:0;color:var(--text-muted);}
+.result-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+
+/* Barra para elegir qué preguntas repetir */
+.repeat-bar{
+  margin:4px 0 18px;padding:15px 16px;border-radius:var(--radius-sm);
+  border:1.5px dashed rgba(217,165,32,.65);
+  background:radial-gradient(420px 160px at 50% 0%,rgba(255,214,120,.35),rgba(253,246,228,.85));
+}
+.repeat-bar-title{margin:0 0 10px;font-size:14px;color:var(--maroon);font-weight:600;}
+.repeat-bar-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.repeat-bar-actions .btn{font-size:13.5px;padding:10px 16px;}
+.review-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+.review-head .q-idx{margin-bottom:0;}
+.repeat-pick{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  font-size:12px;font-weight:700;color:#8A4B08;
+  background:linear-gradient(180deg,#FFF8E4,#F6E4BB);
+  border:1.5px solid rgba(217,165,32,.55);
+  padding:5px 12px;border-radius:999px;transition:.2s;user-select:none;
+}
+.repeat-pick:hover{border-color:var(--primary);box-shadow:0 0 0 3px rgba(224,130,28,.16);}
+.repeat-pick input{accent-color:var(--primary-dark);width:16px;height:16px;cursor:pointer;}
+.repeat-pick:has(input:checked){background:linear-gradient(180deg,#FDEDCB,#F7DCA4);border-color:var(--primary);}
+
+.review-item{border-bottom:1.5px dashed rgba(217,165,32,.5);padding:18px 0;}
+.review-item:last-child{border-bottom:none;}
+.review-item .q-idx{font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px;}
+.review-item .q-text{font-size:16px;margin-bottom:10px;}
+.review-answer-row{font-size:13.5px;padding:6px 0;display:flex;gap:8px;align-items:flex-start;}
+.review-answer-row .tag{
+  flex-shrink:0;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;
+}
+.tag.ok{background:#DCF4E7;color:#0F7B5F;border:1px solid rgba(15,123,95,.4);}
+.tag.no{background:var(--danger-light);color:var(--danger);border:1px solid rgba(192,57,43,.35);}
+
+/* ================================================================
+   TOASTS / ERRORES
+   ================================================================ */
+#toast-container{position:fixed;bottom:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:10px;max-width:340px;}
+.toast{
+  background:linear-gradient(180deg,#FFFCF2,#FBF0D5);
+  border:1.5px solid rgba(217,165,32,.55);border-left:5px solid var(--danger);
+  border-radius:12px;box-shadow:var(--shadow-lg);padding:14px 16px;font-size:13.5px;
+  animation:slideIn .25s ease;
+}
+.toast.info{border-left-color:var(--primary);}
+.toast strong{display:block;margin-bottom:2px;font-size:13px;color:var(--maroon);}
+@keyframes slideIn{from{opacity:0;transform:translateX(24px) rotate(2deg);}to{opacity:1;transform:translateX(0) rotate(0);}}
+
+/* ================================================================
+   MODAL (API KEY)
+   ================================================================ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(58,15,24,.62);z-index:80;
+  backdrop-filter:blur(7px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.show{display:flex;animation:fadeIn .25s ease;}
+.modal{
+  background:linear-gradient(180deg,#FFFCF3,#FAEEDA) padding-box,
+             linear-gradient(135deg,#F0CE7E,#DC8A24 45%,#C0392B 80%,#F0CE7E) border-box;
+  border:2px solid transparent;border-radius:var(--radius);padding:28px;max-width:430px;width:100%;
+  box-shadow:var(--shadow-lg),inset 0 0 46px rgba(233,196,106,.3);
+  animation:popIn .3s cubic-bezier(.2,1.4,.5,1);
+}
+@keyframes popIn{from{opacity:0;transform:scale(.92) translateY(14px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.modal h3{margin:0 0 8px;color:var(--maroon);}
+.modal p{color:var(--text-muted);font-size:13px;margin:0 0 16px;}
+.modal input[type="password"],.modal input[type="text"]{
+  width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  font-size:14px;margin-bottom:12px;background:#FFFDF6;font-family:inherit;
+}
+.modal input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 4px rgba(224,130,28,.18);}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;}
+.modal a.link{font-size:12.5px;color:var(--primary-dark);}
+.modal a.link:hover{text-shadow:0 0 12px rgba(224,130,28,.6);}
+
+footer.app-footer{text-align:center;color:#8A6537;font-size:12.5px;padding:28px 0 8px;font-family:var(--font-body);}
+footer.app-footer .deva{font-family:var(--font-deva);color:#A06A22;font-size:14px;display:block;margin-bottom:6px;letter-spacing:.12em;}
+
+/* Barra de scroll dorada */
+::-webkit-scrollbar{width:12px;}
+::-webkit-scrollbar-track{background:#F0DFB6;}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#E0821C,#B95F0A);border-radius:8px;border:3px solid #F0DDB2;}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#F2A33F,#C96A0E);}
+
+/* Accesibilidad: menos movimiento */
+@media (prefers-reduced-motion:reduce){
+  .deco-layer,.lamp,body::before{display:none;}
+  *:not(.loader-orb){animation-duration:.01ms !important;animation-iteration-count:1 !important;}
+}
+
+/* Impresión */
+@media print{
+  .no-print{display:none !important;}
+  main{max-width:100%;padding:0;position:static;}
+  body{background:#fff;}
+  body::before,.deco-layer,.lamp{display:none !important;}
+  .card{border:1px solid #ccc;box-shadow:none;background:#fff;}
+  .repeat-pick{display:none !important;}
+  .explanation{display:block !important;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CAPA DECORATIVA: devanagari flotante, emojis y lámparas
+     ============================================================ -->
+<div class="deco-layer no-print" aria-hidden="true">
+  <div class="lamp lamp-a"></div>
+  <div class="lamp lamp-b"></div>
+  <div class="lamp lamp-c"></div>
+  <span class="deco-glyph g1 d2">ॐ</span>
+  <span class="deco-glyph g2 d1">श्री</span>
+  <span class="deco-glyph g3 d3">ज्ञान</span>
+  <span class="deco-glyph g4 d2">विद्या</span>
+  <span class="deco-glyph g5 d1">क</span>
+  <span class="deco-glyph g6 d3">संस्कृत</span>
+  <span class="deco-glyph g7 d1">मन</span>
+  <span class="deco-glyph g8 d2">क्विज़</span>
+  <span class="deco-glyph g9 d3">आ</span>
+  <span class="deco-glyph g10 d1">गुरु</span>
+  <span class="deco-glyph g11 d2">देव</span>
+  <span class="deco-glyph g12 d3">सत्य</span>
+  <span class="deco-emoji e1 d2">🪔</span>
+  <span class="deco-emoji e2 d1">🪷</span>
+  <span class="deco-emoji e3 d3">🦚</span>
+  <span class="deco-emoji e4 d2">🐘</span>
+  <span class="deco-emoji e5 d1">🔔</span>
+  <span class="deco-emoji e6 d3">✨</span>
+</div>
+
+<!-- ============================================================
+     TOPBAR
+     ============================================================ -->
+<header class="topbar no-print">
+  <div class="brand"><span class="brand-mark">ॐ</span> QuizForge AI <span class="brand-deva">क्विज़ फ़ोर्ज</span></div>
+  <div class="topbar-actions">
+    <span id="keyStatus" class="key-status">Sin clave API</span>
+    <button class="icon-btn" id="openSettingsBtn" title="Configurar API Key">⚙️</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ==========================================================
+       VISTA 1: CONFIGURACIÓN DE ENTRADA
+       ========================================================== -->
+  <section id="view-setup" class="view active">
+    <div class="hero">
+      <h1>🪔 Crea un quiz con IA a partir de tu contenido ✨</h1>
+      <p class="hero-deva">अभ्यास • ज्ञान • आनंद</p>
+      <p>Pega un texto o sube un archivo (TXT, PDF, DOCX) y genera preguntas al instante con IA 🧠⚡</p>
+    </div>
+
+    <div class="setup-grid">
+      <!-- Panel de entrada de contenido -->
+      <div class="card">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="text">✍️ Escribir texto</button>
+          <button class="tab-btn" data-tab="file">📁 Subir archivo</button>
+        </div>
+
+        <div class="tab-panel active" id="panel-text">
+          <textarea id="textInput" placeholder="Pega aquí el texto, apuntes o artículo sobre el que quieres generar el quiz..."></textarea>
+          <div class="char-count"><span id="charCount">0</span> caracteres</div>
+        </div>
+
+        <div class="tab-panel" id="panel-file">
+          <div class="dropzone" id="dropzone">
+            <div class="dz-icon">📄</div>
+            <p><strong>Haz clic para subir</strong> o arrastra tu archivo aquí</p>
+            <p>Formatos soportados: .TXT · .PDF · .DOCX (máx. 8 MB)</p>
+            <input type="file" id="fileInput" accept=".txt,.pdf,.docx" hidden>
+          </div>
+          <div class="file-info" id="fileInfo">
+            <span id="fileInfoText"></span>
+            <button class="remove-file" id="removeFileBtn" title="Quitar archivo">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel de configuración del quiz -->
+      <div class="card config-card">
+        <h3>📜 Configuración del quiz</h3>
+
+        <div class="field">
+          <label for="numQuestions">🎯 Número de preguntas</label>
+          <input type="number" id="numQuestions" min="3" max="20" value="5">
+        </div>
+
+        <div class="field">
+          <label>🧩 Tipos de pregunta</label>
+          <div class="checkbox-group">
+            <label class="checkbox-row"><input type="checkbox" value="multiple_choice" checked> Opción múltiple</label>
+            <label class="checkbox-row"><input type="checkbox" value="true_false" checked> Verdadero / Falso</label>
+            <label class="checkbox-row"><input type="checkbox" value="fill_blank"> Rellenar huecos</label>
+            <label class="checkbox-row"><input type="checkbox" value="short_answer"> Respuesta corta (una palabra)</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="difficulty">🔥 Dificultad</label>
+          <select id="difficulty">
+            <option value="fácil">Fácil</option>
+            <option value="media" selected>Media</option>
+            <option value="difícil">Difícil</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="language">🌍 Idioma del quiz</label>
+          <select id="language">
+            <option value="Español" selected>Español</option>
+            <option value="Inglés">Inglés</option>
+            <option value="Francés">Francés</option>
+            <option value="Portugués">Portugués</option>
+            <option value="Alemán">Alemán</option>
+            <option value="Italiano">Italiano</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" id="generateBtn">✨ Generar Quiz</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       VISTA 2: CARGANDO
+       ========================================================== -->
+  <section id="view-loading" class="view">
+    <div class="loading-view">
+      <div class="loader-wrap">
+        <div class="loader-orb"></div>
+        <div class="loader-om">🕉️</div>
+      </div>
+      <h3>🪔 Generando tu quiz con IA…</h3>
+      <p class="loading-deva">आपका क्विज़ बन रहा है…</p>
+      <p>Esto puede tardar unos segundos, no cierres esta ventana ⏳</p>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       VISTA 3: QUIZ
+       ========================================================== -->
+  <section id="view-quiz" class="view">
+    <div class="quiz-header no-print">
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-label" id="progressLabel">Pregunta 1 de 5</div>
+      </div>
+      <button class="btn btn-ghost" id="quitQuizBtn">← Salir</button>
+    </div>
+
+    <div class="nav-grid no-print" id="navGrid"></div>
+
+    <div class="card question-card" id="questionCard"></div>
+
+    <div class="quiz-actions no-print">
+      <div class="side">
+        <button class="btn btn-secondary" id="prevBtn">← Anterior</button>
+        <button class="btn btn-secondary" id="nextBtn">Siguiente →</button>
+      </div>
+      <button class="btn btn-primary" id="finishBtn" style="width:auto;">Finalizar quiz ✅</button>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       VISTA 4: RESULTADOS
+       ========================================================== -->
+  <section id="view-results" class="view">
+    <div class="card">
+      <div class="results-summary">
+        <div class="score-ring">
+          <svg width="120" height="120">
+            <circle class="bg" cx="60" cy="60" r="52" stroke-width="10" fill="none"/>
+            <circle class="fg" id="scoreCircle" cx="60" cy="60" r="52" stroke-width="10" fill="none"
+              stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+          </svg>
+          <div class="score-text"><b id="scorePercent">0%</b><span id="scoreFraction">0/0</span></div>
+        </div>
+        <div class="results-meta">
+          <h2 id="resultsTitle">¡Quiz completado!</h2>
+          <p id="resultsSubtitle">Revisa tus respuestas y explicaciones abajo.</p>
+          <div class="result-actions no-print">
+            <button class="btn btn-secondary" id="copyBtn">📋 Copiar</button>
+            <button class="btn btn-secondary" id="exportBtn">⬇️ Exportar .txt</button>
+            <button class="btn btn-secondary" id="printBtn">🖨️ Imprimir</button>
+            <button class="btn btn-secondary" id="regenerateBtn">🎲 Generar otra versión</button>
+            <button class="btn btn-primary" id="restartBtn" style="width:auto;">✏️ Nuevo quiz</button>
+          </div>
+        </div>
+      </div>
+      <div class="repeat-bar no-print" id="repeatBar">
+        <p class="repeat-bar-title">🔁 ¿Qué quieres volver a practicar? Marca abajo solo las que quieras repasar — las demás se conservan 🪔</p>
+        <div class="repeat-bar-actions">
+          <button class="btn btn-secondary" id="selectWrongBtn">❌ Solo incorrectas</button>
+          <button class="btn btn-secondary" id="selectAllBtn">📋 Todas</button>
+          <button class="btn btn-secondary" id="selectNoneBtn">🚫 Ninguna</button>
+          <button class="btn btn-primary" id="repeatSelectedBtn" style="width:auto;" disabled>🔁 Repetir seleccionadas (0)</button>
+        </div>
+      </div>
+      <div id="reviewList"></div>
+    </div>
+  </section>
+
+  <footer class="app-footer no-print">
+    <span class="deva">॥ शुभम् ॥</span>
+    🕉️ QuizForge AI · Generado 100% en tu navegador con la API de Groq · No se envían datos a ningún servidor propio 🪔✨
+  </footer>
+</main>
+
+<!-- Toasts -->
+<div id="toast-container" class="no-print"></div>
+
+<!-- Modal API Key -->
+<div class="modal-overlay no-print" id="apiKeyModalOverlay">
+  <div class="modal">
+    <h3>🔑 Clave API de Groq</h3>
+    <p>Tu clave se guarda solo en <strong>localStorage</strong> de este navegador. Nunca se envía a ningún servidor propio, solo directamente a Groq.</p>
+    <input type="password" id="apiKeyInput" placeholder="gsk_...">
+    <p><a class="link" href="https://console.groq.com/keys" target="_blank" rel="noopener">Obtener una API Key gratuita en console.groq.com →</a></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeModalBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveKeyBtn" style="width:auto;">Guardar clave</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   QUIZFORGE AI — LÓGICA DE LA APLICACIÓN
+   Aplicación 100% estática. Toda la generación ocurre en el navegador
+   mediante llamadas fetch directas a la API de Groq (OpenAI-compatible).
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   0. ESTADO GLOBAL Y REFERENCIAS DOM
+   --------------------------------------------------------------------- */
+const state = {
+  sourceText: '',          // texto final que se envía a la IA (manual o extraído de archivo)
+  uploadedFileName: null,
+  config: null,             // configuración elegida por el usuario
+  quiz: null,                // { quiz_title, questions:[...] } devuelto por la IA (completo, nunca se pierde)
+  activeIndices: [],         // índices del quiz que forman la sesión de práctica actual
+  answers: [],               // respuesta más reciente por pregunta del quiz completo (string o null)
+  current: 0,                 // índice de la pregunta actual
+  finished: false
+};
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+/* Clase de error propia para poder mostrar mensajes claros al usuario */
+class AppError extends Error{
+  constructor(code, message){ super(message); this.code = code; }
+}
+
+/* ---------------------------------------------------------------------
+   1. GESTIÓN DE LA API KEY (localStorage)
+   --------------------------------------------------------------------- */
+const API_KEY_STORAGE = 'quizforge_groq_api_key';
+
+function getApiKey(){
+  return localStorage.getItem(API_KEY_STORAGE) || '';
+}
+function setApiKey(key){
+  localStorage.setItem(API_KEY_STORAGE, key.trim());
+  refreshKeyStatus();
+}
+function refreshKeyStatus(){
+  const key = getApiKey();
+  const badge = $('#keyStatus');
+  if(key){
+    badge.textContent = 'API Key configurada';
+    badge.className = 'key-status ok';
+  } else {
+    badge.textContent = 'Sin clave API';
+    badge.className = 'key-status bad';
+  }
+}
+
+function openApiKeyModal(){
+  $('#apiKeyInput').value = getApiKey();
+  $('#apiKeyModalOverlay').classList.add('show');
+}
+function closeApiKeyModal(){
+  $('#apiKeyModalOverlay').classList.remove('show');
+}
+
+$('#openSettingsBtn').addEventListener('click', openApiKeyModal);
+$('#closeModalBtn').addEventListener('click', closeApiKeyModal);
+$('#apiKeyModalOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'apiKeyModalOverlay') closeApiKeyModal();
+});
+$('#saveKeyBtn').addEventListener('click', () => {
+  const val = $('#apiKeyInput').value.trim();
+  if(!val){
+    showToast('error','Introduce una clave válida antes de guardar.');
+    return;
+  }
+  setApiKey(val);
+  closeApiKeyModal();
+  showToast('info','Clave API guardada correctamente.');
+});
+
+/* ---------------------------------------------------------------------
+   2. NAVEGACIÓN ENTRE VISTAS (SPA sin router, solo mostrar/ocultar)
+   --------------------------------------------------------------------- */
+function showView(name){
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $('#view-' + name).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* ---------------------------------------------------------------------
+   3. TOASTS DE ERROR / INFORMACIÓN
+   --------------------------------------------------------------------- */
+function showToast(type, message, title){
+  const container = $('#toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'info' ? ' info' : '');
+  el.innerHTML = `<strong>${title || (type === 'info' ? 'Aviso' : 'Error')}</strong>${message}`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 6000);
+}
+
+/* ---------------------------------------------------------------------
+   4. TABS: TEXTO vs ARCHIVO
+   --------------------------------------------------------------------- */
+$$('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.tab-btn').forEach(b => b.classList.remove('active'));
+    $$('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('#panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+$('#textInput').addEventListener('input', (e) => {
+  $('#charCount').textContent = e.target.value.length;
+});
+
+/* ---------------------------------------------------------------------
+   5. CARGA Y EXTRACCIÓN DE ARCHIVOS (TXT / PDF / DOCX) — sin backend
+   --------------------------------------------------------------------- */
+
+// Configurar worker de PDF.js (necesario para que funcione en el navegador)
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const dropzone = $('#dropzone');
+const fileInput = $('#fileInput');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if(e.target.files.length) handleFile(e.target.files[0]);
+});
+$('#removeFileBtn').addEventListener('click', () => {
+  state.sourceText = '';
+  state.uploadedFileName = null;
+  $('#fileInfo').classList.remove('show');
+  fileInput.value = '';
+});
+
+async function handleFile(file){
+  const maxSize = 8 * 1024 * 1024; // 8 MB
+  if(file.size > maxSize){
+    showToast('error','El archivo supera el límite de 8 MB. Prueba con uno más pequeño.');
+    return;
+  }
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['txt','pdf','docx'].includes(ext)){
+    showToast('error','Formato no soportado. Sube un archivo .txt, .pdf o .docx.');
+    return;
+  }
+
+  $('#fileInfoText').textContent = `⏳ Procesando "${file.name}"...`;
+  $('#fileInfo').classList.add('show');
+
+  try{
+    let text = '';
+    if(ext === 'txt') text = await readTxt(file);
+    else if(ext === 'pdf') text = await readPdf(file);
+    else if(ext === 'docx') text = await readDocx(file);
+
+    text = (text || '').trim();
+    if(text.length < 30){
+      throw new AppError('EMPTY_FILE','No se pudo extraer suficiente texto de este archivo. Puede estar vacío, escaneado como imagen o dañado.');
+    }
+
+    state.sourceText = text;
+    state.uploadedFileName = file.name;
+    $('#fileInfoText').textContent = `✅ ${file.name} (${text.length.toLocaleString()} caracteres extraídos)`;
+  }catch(err){
+    console.error(err);
+    $('#fileInfo').classList.remove('show');
+    showToast('error', err instanceof AppError ? err.message : 'No se pudo leer el archivo. Prueba con otro.');
+  }
+}
+
+function readTxt(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new AppError('FILE_READ','No se pudo leer el archivo de texto.'));
+    reader.readAsText(file);
+  });
+}
+
+async function readPdf(file){
+  if(!window.pdfjsLib) throw new AppError('LIB_MISSING','No se pudo cargar la librería PDF.js.');
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  let fullText = '';
+  const maxPages = Math.min(pdf.numPages, 60); // límite razonable
+  for(let i = 1; i <= maxPages; i++){
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    fullText += content.items.map(it => it.str).join(' ') + '\n';
+  }
+  return fullText;
+}
+
+async function readDocx(file){
+  if(!window.mammoth) throw new AppError('LIB_MISSING','No se pudo cargar la librería Mammoth.js.');
+  const buffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+  return result.value;
+}
+
+/* ---------------------------------------------------------------------
+   6. LECTURA DE CONFIGURACIÓN
+   --------------------------------------------------------------------- */
+function getConfig(){
+  const types = $$('.checkbox-row input[type="checkbox"]:checked').map(c => c.value);
+  const numQuestions = Math.max(3, Math.min(20, parseInt($('#numQuestions').value, 10) || 5));
+  return {
+    numQuestions,
+    types: types.length ? types : ['multiple_choice'],
+    difficulty: $('#difficulty').value,
+    language: $('#language').value
+  };
+}
+
+function getSourceText(){
+  const activeTab = $('.tab-btn.active').dataset.tab;
+  if(activeTab === 'text') return $('#textInput').value.trim();
+  return state.sourceText;
+}
+
+/* ---------------------------------------------------------------------
+   7. CONSTRUCCIÓN DE PROMPTS PARA LA IA
+   --------------------------------------------------------------------- */
+const TYPE_LABELS = {
+  multiple_choice: 'opción múltiple (4 opciones)',
+  true_false: 'verdadero/falso',
+  fill_blank: 'rellenar huecos',
+  short_answer: 'respuesta corta de una sola palabra'
+};
+
+function buildSystemPrompt(config){
+  const typeList = config.types.map(t => TYPE_LABELS[t]).join(', ');
+  return `Eres un generador experto de cuestionarios educativos. Tu única salida debe ser un objeto JSON válido, sin texto adicional, sin explicaciones fuera del JSON y sin bloques de código markdown.
+
+Debes generar exactamente ${config.numQuestions} preguntas en idioma "${config.language}", con dificultad "${config.difficulty}", combinando ÚNICAMENTE estos tipos de pregunta permitidos: ${typeList}.
+
+Reglas estrictas del esquema JSON:
+{
+  "quiz_title": "string breve que resuma el tema",
+  "questions": [
+    {
+      "type": "multiple_choice" | "true_false" | "fill_blank" | "short_answer",
+      "question": "texto de la pregunta. Si type es fill_blank, debe incluir el marcador ___ donde va la palabra/frase a completar",
+      "options": ["array de opciones"],
+      "correct_answer": "debe coincidir EXACTAMENTE (carácter a carácter) con uno de los elementos de options cuando aplique, o con la palabra/frase correcta si es fill_blank o short_answer",
+      "explanation": "breve explicación de por qué esa es la respuesta correcta, en el mismo idioma del quiz"
+    }
+  ]
+}
+
+Reglas por tipo:
+- "multiple_choice": exactamente 4 opciones en "options", plausibles y mutuamente excluyentes. IMPORTANTE: cada opción debe ser UNA SOLA PALABRA (sin espacios, sin comas, sin frases). Si el concepto requiere varias palabras, elige el término clave más representativo o únelo con un guion (ej. "fotosíntesis", "guerra-fría"). Redacta la pregunta de forma que tenga sentido responderla con una sola palabra.
+- "true_false": "options" debe ser exactamente ["Verdadero","Falso"] traducido al idioma del quiz.
+- "fill_blank": "options" debe ser un array vacío [] y "correct_answer" la palabra o frase exacta que falta.
+- "short_answer": pregunta directa (sin marcador de hueco) cuya respuesta es UNA SOLA PALABRA (o como máximo dos palabras muy cortas, ej. un nombre propio o un término técnico). "options" debe ser un array vacío [] y "correct_answer" esa palabra exacta.
+
+No inventes datos que no estén respaldados por el texto proporcionado por el usuario. Responde SOLO con el JSON, empezando en "{" y terminando en "}".`;
+}
+
+function buildUserPrompt(sourceText, config){
+  // Se trunca el texto fuente para mantenernos dentro de límites de contexto razonables
+  const MAX_CHARS = 12000;
+  const trimmed = sourceText.length > MAX_CHARS
+    ? sourceText.slice(0, MAX_CHARS) + '\n[...texto truncado...]'
+    : sourceText;
+  return `Genera el quiz a partir del siguiente contenido:\n\n"""\n${trimmed}\n"""`;
+}
+
+/* ---------------------------------------------------------------------
+   8. LLAMADA A LA API DE GROQ
+   --------------------------------------------------------------------- */
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
+const REQUEST_TIMEOUT_MS = 60000;
+
+async function callGroq(apiKey, sourceText, config){
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  const systemPrompt = buildSystemPrompt(config);
+  const userPrompt = buildUserPrompt(sourceText, config);
+  const maxTokens = Math.min(8000, 500 + config.numQuestions * 350);
+
+  let res;
+  try{
+    res = await fetch(GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.6,
+        max_tokens: maxTokens,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
+      }),
+      signal: controller.signal
+    });
+  }catch(err){
+    if(err.name === 'AbortError'){
+      throw new AppError('TIMEOUT', 'La solicitud a Groq tardó demasiado en responder (más de 60s). Inténtalo de nuevo.');
+    }
+    throw new AppError('NETWORK', 'No se pudo conectar con la API de Groq. Revisa tu conexión a internet.');
+  }finally{
+    clearTimeout(timeoutId);
+  }
+
+  if(!res.ok){
+    let apiMsg = '';
+    try{ const errJson = await res.json(); apiMsg = errJson?.error?.message || ''; }catch(_){}
+
+    if(res.status === 401){
+      throw new AppError('AUTH', 'Tu clave API de Groq no es válida o ha expirado. Revísala en Configuración.');
+    }
+    if(res.status === 429){
+      throw new AppError('RATE_LIMIT', 'Se alcanzó el límite de peticiones o de tokens en Groq. Espera unos segundos e inténtalo de nuevo.');
+    }
+    if(res.status === 413){
+      throw new AppError('TOO_LARGE', 'El texto es demasiado largo para procesarlo. Reduce su tamaño e inténtalo de nuevo.');
+    }
+    throw new AppError('API_ERROR', `Error de la API de Groq (${res.status}): ${apiMsg || res.statusText}`);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if(!content){
+    throw new AppError('EMPTY_RESPONSE', 'La IA no devolvió contenido. Inténtalo de nuevo.');
+  }
+  return content;
+}
+
+/* ---------------------------------------------------------------------
+   9. PARSEO Y VALIDACIÓN DEL JSON DEVUELTO POR LA IA
+   --------------------------------------------------------------------- */
+function parseQuizJSON(raw){
+  let text = raw.trim();
+  // Por si el modelo envuelve el JSON en bloques de código markdown
+  text = text.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if(start === -1 || end === -1){
+    throw new AppError('PARSE_ERROR', 'No se pudo interpretar la respuesta de la IA. Inténtalo de nuevo.');
+  }
+  text = text.slice(start, end + 1);
+  try{
+    return JSON.parse(text);
+  }catch(e){
+    throw new AppError('PARSE_ERROR', 'La respuesta de la IA no tenía un formato JSON válido. Inténtalo de nuevo.');
+  }
+}
+
+function validateQuiz(quiz){
+  if(!quiz || !Array.isArray(quiz.questions) || quiz.questions.length === 0){
+    throw new AppError('INVALID_QUIZ', 'La IA no generó preguntas válidas. Inténtalo de nuevo.');
+  }
+  quiz.questions.forEach((q, i) => {
+    if(!q.question || !q.type || q.correct_answer === undefined){
+      throw new AppError('INVALID_QUIZ', `La pregunta ${i + 1} generada está incompleta. Inténtalo de nuevo.`);
+    }
+    if(!Array.isArray(q.options)) q.options = [];
+  });
+}
+
+function humanizeError(err){
+  if(err instanceof AppError) return err.message;
+  return 'Ha ocurrido un error inesperado. Inténtalo de nuevo.';
+}
+
+/* ---------------------------------------------------------------------
+   10. FLUJO PRINCIPAL: GENERAR QUIZ
+   --------------------------------------------------------------------- */
+$('#generateBtn').addEventListener('click', () => {
+  const apiKey = getApiKey();
+  if(!apiKey){
+    showToast('error','Introduce tu clave API de Groq antes de generar el quiz.');
+    openApiKeyModal();
+    return;
+  }
+
+  const sourceText = getSourceText();
+  if(!sourceText || sourceText.length < 50){
+    showToast('error','Añade texto (mínimo 50 caracteres) o sube un archivo antes de generar el quiz.');
+    return;
+  }
+
+  const config = getConfig();
+  // Guardamos el texto y la configuración usados para poder regenerar más tarde
+  state.usedSourceText = sourceText;
+  state.usedConfig = config;
+
+  runGeneration(apiKey, sourceText, config);
+});
+
+/**
+ * Ejecuta la llamada a Groq y renderiza el quiz resultante.
+ * Se reutiliza tanto para la generación inicial como para "Generar de nuevo".
+ */
+async function runGeneration(apiKey, sourceText, config){
+  const genBtn = $('#generateBtn');
+  genBtn.disabled = true;
+  showView('loading');
+
+  try{
+    const raw = await callGroq(apiKey, sourceText, config);
+    const quiz = parseQuizJSON(raw);
+    validateQuiz(quiz);
+
+    state.quiz = quiz;
+    state.activeIndices = quiz.questions.map((_, i) => i);
+    state.config = config;
+    state.answers = new Array(quiz.questions.length).fill(null);
+    state.current = 0;
+    state.finished = false;
+
+    renderNavGrid();
+    renderQuestion();
+    showView('quiz');
+  }catch(err){
+    console.error(err);
+    showView('setup');
+    showToast('error', humanizeError(err));
+  }finally{
+    genBtn.disabled = false;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   11. RENDERIZADO DEL QUIZ
+   --------------------------------------------------------------------- */
+const optionLetters = ['A','B','C','D','E','F'];
+
+function renderNavGrid(){
+  const grid = $('#navGrid');
+  grid.innerHTML = '';
+  state.activeIndices.forEach((_, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-dot';
+    btn.textContent = i + 1;
+    btn.addEventListener('click', () => { state.current = i; renderQuestion(); });
+    grid.appendChild(btn);
+  });
+  updateNavGrid();
+}
+
+function updateNavGrid(){
+  $$('.nav-dot').forEach((dot, i) => {
+    const qIdx = state.activeIndices[i];
+    dot.classList.toggle('current', i === state.current);
+    dot.classList.toggle('answered', state.answers[qIdx] !== null && state.answers[qIdx] !== '');
+  });
+}
+
+function renderQuestion(){
+  const qIdx = state.activeIndices[state.current];
+  const q = state.quiz.questions[qIdx];
+  const total = state.activeIndices.length;
+  const card = $('#questionCard');
+
+  $('#progressFill').style.width = `${((state.current + 1) / total) * 100}%`;
+  $('#progressLabel').textContent = `Pregunta ${state.current + 1} de ${total}`;
+
+  const typeLabel = { multiple_choice: 'Opción múltiple', true_false: 'Verdadero / Falso', fill_blank: 'Rellenar hueco', short_answer: 'Respuesta corta' }[q.type] || q.type;
+
+  let optionsHtml = '';
+  if(q.type === 'fill_blank' || q.type === 'short_answer'){
+    const currentVal = state.answers[qIdx] || '';
+    const placeholder = q.type === 'short_answer' ? 'Escribe una palabra...' : 'Escribe tu respuesta...';
+    optionsHtml = `<input type="text" class="fill-blank-input" id="fillBlankInput" placeholder="${placeholder}" value="${escapeHtml(currentVal)}">`;
+  } else {
+    optionsHtml = q.options.map((opt, i) => {
+      const selected = state.answers[qIdx] === opt ? 'selected' : '';
+      return `<button class="option ${selected}" data-option="${escapeHtml(opt)}">
+        <span class="opt-letter">${optionLetters[i] || i + 1}</span>
+        <span>${escapeHtml(opt)}</span>
+      </button>`;
+    }).join('');
+  }
+
+  card.innerHTML = `
+    <span class="q-type-badge">${typeLabel}</span>
+    <p class="q-text">${escapeHtml(q.question)}</p>
+    <div class="options" id="optionsWrap">${optionsHtml}</div>
+    <div class="explanation" id="explanationBox"><strong>Explicación:</strong> ${escapeHtml(q.explanation || '')}</div>
+  `;
+
+  if(q.type === 'fill_blank' || q.type === 'short_answer'){
+    $('#fillBlankInput').addEventListener('input', (e) => {
+      state.answers[qIdx] = e.target.value;
+      updateNavGrid();
+    });
+  } else {
+    $$('#optionsWrap .option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.answers[qIdx] = btn.dataset.option;
+        renderQuestion();
+      });
+    });
+  }
+
+  updateNavGrid();
+  $('#prevBtn').disabled = state.current === 0;
+  $('#nextBtn').style.visibility = state.current === total - 1 ? 'hidden' : 'visible';
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+$('#prevBtn').addEventListener('click', () => {
+  if(state.current > 0){ state.current--; renderQuestion(); }
+});
+$('#nextBtn').addEventListener('click', () => {
+  if(state.current < state.activeIndices.length - 1){ state.current++; renderQuestion(); }
+});
+$('#quitQuizBtn').addEventListener('click', () => {
+  if(confirm('¿Seguro que quieres salir? Perderás tu progreso actual.')) showView('setup');
+});
+
+// Navegación con teclado (flechas izquierda/derecha)
+document.addEventListener('keydown', (e) => {
+  if(!$('#view-quiz').classList.contains('active')) return;
+  if(e.key === 'ArrowRight') $('#nextBtn').click();
+  if(e.key === 'ArrowLeft') $('#prevBtn').click();
+});
+
+/* ---------------------------------------------------------------------
+   12. FINALIZAR QUIZ Y CALCULAR RESULTADOS
+   --------------------------------------------------------------------- */
+$('#finishBtn').addEventListener('click', () => {
+  const unanswered = state.activeIndices.filter(i => state.answers[i] === null || state.answers[i] === '').length;
+  if(unanswered > 0){
+    const proceed = confirm(`Tienes ${unanswered} pregunta(s) sin responder. ¿Quieres finalizar de todas formas?`);
+    if(!proceed) return;
+  }
+  state.finished = true;
+  renderResults();
+  showView('results');
+});
+
+function normalize(str){
+  return (str || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function isCorrect(question, userAnswer){
+  if(userAnswer === null || userAnswer === undefined) return false;
+  return normalize(userAnswer) === normalize(question.correct_answer);
+}
+
+function renderResults(){
+  const questions = state.quiz.questions;
+  const total = questions.length;
+  let correctCount = 0;
+
+  const reviewHtml = questions.map((q, i) => {
+    const userAnswer = state.answers[i];
+    const correct = isCorrect(q, userAnswer);
+    if(correct) correctCount++;
+
+    let answerRows = '';
+    if(q.type === 'fill_blank' || q.type === 'short_answer'){
+      answerRows = `
+        <div class="review-answer-row">
+          <span class="tag ${correct ? 'ok' : 'no'}">${correct ? 'Correcta' : 'Incorrecta'}</span>
+          <span>Tu respuesta: <strong>${escapeHtml(userAnswer || '(sin responder)')}</strong>${!correct ? ` · Correcta: <strong>${escapeHtml(q.correct_answer)}</strong>` : ''}</span>
+        </div>`;
+    } else {
+      answerRows = q.options.map(opt => {
+        const isUser = opt === userAnswer;
+        const isRight = normalize(opt) === normalize(q.correct_answer);
+        let tag = '';
+        if(isRight) tag = '<span class="tag ok">Correcta</span>';
+        else if(isUser && !isRight) tag = '<span class="tag no">Tu respuesta</span>';
+        if(!isRight && !isUser) return '';
+        return `<div class="review-answer-row">${tag}<span>${escapeHtml(opt)}</span></div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="review-item">
+        <div class="review-head">
+          <label class="repeat-pick" title="Marca esta pregunta para repetirla">
+            <input type="checkbox" class="repeat-check" data-index="${i}" ${correct ? '' : 'checked'}>
+            <span>Repetir 🔁</span>
+          </label>
+          <div class="q-idx">Pregunta ${i + 1} · ${correct ? '✅ Correcta' : '❌ Incorrecta'}</div>
+        </div>
+        <div class="q-text">${escapeHtml(q.question)}</div>
+        ${answerRows}
+        <div class="explanation show"><strong>Explicación:</strong> ${escapeHtml(q.explanation || 'Sin explicación disponible.')}</div>
+      </div>`;
+  }).join('');
+
+  $('#reviewList').innerHTML = reviewHtml;
+  updateRepeatBar();
+
+  const pct = Math.round((correctCount / total) * 100);
+  $('#scorePercent').textContent = `${pct}%`;
+  $('#scoreFraction').textContent = `${correctCount}/${total}`;
+  $('#resultsTitle').textContent = state.quiz.quiz_title ? `Resultados: ${state.quiz.quiz_title}` : '¡Quiz completado!';
+  $('#resultsSubtitle').textContent = pct >= 70
+    ? '¡Buen trabajo! Revisa las explicaciones para reforzar lo aprendido.'
+    : 'Sigue practicando. Revisa las explicaciones para mejorar.';
+
+  const circle = $('#scoreCircle');
+  const circumference = 2 * Math.PI * 52;
+  circle.setAttribute('stroke-dasharray', circumference);
+  circle.setAttribute('stroke-dashoffset', circumference - (pct / 100) * circumference);
+}
+
+/* ---------------------------------------------------------------------
+   13. ACCIONES: COPIAR / EXPORTAR / IMPRIMIR / REINICIAR
+   --------------------------------------------------------------------- */
+function buildPlainTextQuiz(){
+  const q = state.quiz;
+  let out = `${q.quiz_title || 'Quiz generado con IA'}\n`;
+  out += `Puntuación: ${$('#scoreFraction').textContent} (${$('#scorePercent').textContent})\n\n`;
+  state.quiz.questions.forEach((question, i) => {
+    out += `${i + 1}. ${question.question}\n`;
+    if(question.options && question.options.length){
+      question.options.forEach((opt, j) => {
+        out += `   ${optionLetters[j] || j + 1}) ${opt}\n`;
+      });
+    }
+    out += `   Tu respuesta: ${state.answers[i] ?? '(sin responder)'}\n`;
+    out += `   Respuesta correcta: ${question.correct_answer}\n`;
+    out += `   Explicación: ${question.explanation || '-'}\n\n`;
+  });
+  return out;
+}
+
+$('#copyBtn').addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText(buildPlainTextQuiz());
+    showToast('info','Quiz copiado al portapapeles.');
+  }catch(e){
+    showToast('error','No se pudo copiar automáticamente. Copia el texto manualmente.');
+  }
+});
+
+$('#exportBtn').addEventListener('click', () => {
+  const blob = new Blob([buildPlainTextQuiz()], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(state.quiz.quiz_title || 'quiz').replace(/[^a-z0-9]+/gi, '_').toLowerCase()}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+$('#printBtn').addEventListener('click', () => window.print());
+
+$('#restartBtn').addEventListener('click', () => {
+  state.quiz = null;
+  state.activeIndices = [];
+  state.answers = [];
+  state.current = 0;
+  state.finished = false;
+  showView('setup');
+});
+
+// Repetir SOLO las preguntas marcadas (o todas con el botón "Todas"), sin volver a llamar a la IA
+function updateRepeatBar(){
+  const selected = $$('.repeat-check').filter(c => c.checked).length;
+  const btn = $('#repeatSelectedBtn');
+  if(!btn) return;
+  btn.textContent = `🔁 Repetir seleccionadas (${selected})`;
+  btn.disabled = selected === 0;
+}
+
+function setRepeatSelection(mode){
+  $$('.repeat-check').forEach(check => {
+    const i = parseInt(check.dataset.index, 10);
+    if(mode === 'all') check.checked = true;
+    else if(mode === 'none') check.checked = false;
+    else check.checked = !isCorrect(state.quiz.questions[i], state.answers[i]);
+  });
+  updateRepeatBar();
+}
+
+$('#reviewList').addEventListener('change', (e) => {
+  if(e.target.classList.contains('repeat-check')) updateRepeatBar();
+});
+$('#selectWrongBtn').addEventListener('click', () => setRepeatSelection('wrong'));
+$('#selectAllBtn').addEventListener('click', () => setRepeatSelection('all'));
+$('#selectNoneBtn').addEventListener('click', () => setRepeatSelection('none'));
+
+$('#repeatSelectedBtn').addEventListener('click', () => {
+  if(!state.quiz) return;
+  const indices = $$('.repeat-check')
+    .filter(c => c.checked)
+    .map(c => parseInt(c.dataset.index, 10))
+    .sort((a, b) => a - b);
+  if(!indices.length) return;
+
+  // Solo se reinician las respuestas de las preguntas elegidas; las demás se conservan intactas
+  indices.forEach(i => { state.answers[i] = null; });
+  state.activeIndices = indices;
+  state.current = 0;
+  state.finished = false;
+  renderNavGrid();
+  renderQuestion();
+  showView('quiz');
+  showToast('info', `Vas a repasar ${indices.length} de ${state.quiz.questions.length} preguntas. Las demás quedan guardadas en tus resultados.`, '¡A repasar! 🔁');
+});
+
+// Generar una NUEVA versión del quiz (nuevas preguntas) a partir del mismo texto/configuración
+$('#regenerateBtn').addEventListener('click', () => {
+  const apiKey = getApiKey();
+  if(!apiKey){
+    showToast('error','Introduce tu clave API de Groq antes de generar el quiz.');
+    openApiKeyModal();
+    return;
+  }
+  if(!state.usedSourceText || !state.usedConfig){
+    showToast('error','No se encontró el contenido original. Genera un quiz nuevo desde el inicio.');
+    showView('setup');
+    return;
+  }
+  runGeneration(apiKey, state.usedSourceText, state.usedConfig);
+});
+
+/* ---------------------------------------------------------------------
+   14. INICIALIZACIÓN
+   --------------------------------------------------------------------- */
+refreshKeyStatus();
+if(!getApiKey()){
+  // Si no hay clave guardada, se invita a configurarla al abrir la app
+  setTimeout(() => openApiKeyModal(), 400);
+}
+</script>
+</body>
+</html>
